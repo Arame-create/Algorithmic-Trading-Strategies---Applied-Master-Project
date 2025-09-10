@@ -1,0 +1,234 @@
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from collections import deque
+
+from backtesterClass.orderClass import orders
+from backtesterClass.orderBookClass import OBData
+from backtesterClass.tradingStratClass import autoTrader
+
+# Online machine learning libraries
+from river import compose
+from river import preprocessing
+from river import evaluate
+from river import metrics
+from river import linear_model
+from river import feature_extraction
+from river import optim
+from river import stats
+
+from deep_river.regression import RollingRegressor
+
+from torch import nn
+from .LTSMClass import LstmModule
+from utils.debug import logger
+
+MAX_INVENTORY = 10000
+
+class LTSMOnlineLearnStrat(autoTrader):
+    
+    def __init__(self, name,
+                short_window: int = 20, long_window: int = 200,
+                RSI_window=50, sellThreshold=70,
+                buyThreshold=30, alpha=0.05,
+                trainLen = 200, forecast=2):
+        
+        super().__init__(name)
+        self.name = name
+        self.asset_list = OBData.assets
+        self.asset_count = len(self.asset_list)
+
+        self.windowLengt = RSI_window
+        self.windowRSI = [deque(maxlen=self.windowLengt) for _ in range(self.asset_count)]
+
+        self.short_window = short_window
+        self.long_window = long_window
+        self.maxLen = max(self.windowLengt,self.long_window+1)
+
+        # Rolling buffers for price and feature tracking
+        self.forecast = forecast
+        self.prices = [deque(maxlen=self.maxLen) for _ in range(self.asset_count)]
+        self.X_list = [deque(maxlen= self.forecast) for _ in range(self.asset_count)]
+        self.y_list = [deque(maxlen= self.forecast) for _ in range(self.asset_count)]
+        self.y_pred_list = [deque(maxlen= self.forecast) for _ in range(self.asset_count)]
+
+        self.sellThreshold = sellThreshold
+        self.buyThreshold = buyThreshold
+        self.alpha = alpha  # EMA smoothing factor
+
+        # Used for efficient moving average calculation
+        self.short_sums = np.zeros(self.asset_count)
+        self.long_sums = np.zeros(self.asset_count)
+
+        # Historical indicators (used for analysis or plotting)
+        self.historical_RSI = [[] for _ in range(self.asset_count)]
+        self.historical_short_ma = [[] for _ in range(self.asset_count)]
+        self.historical_long_ma = [[] for _ in range(self.asset_count)]
+
+        self.trainLen = trainLen
+        self.midBuffer = np.zeros(self.asset_count)
+
+        self.metric = metrics.ROCAUC()  # Evaluation metric
+
+        self.cumRets = np.zeros(self.asset_count)  # comulative returns
+        self.prediction = [[] for _ in range(self.asset_count)]  # Track predictions vs. actuals
+
+        # Online learning pipeline with LSTM module
+        self.model = compose.Pipeline(
+            compose.Select(
+                "rsi", "long_ma", "short_ma", "lag_ret_1", "lag_ret_2", "lag_ret_5", "lag_ret_10", "cumulative returns"
+            ),
+            preprocessing.StandardScaler(),
+            RollingRegressor(
+                module=LstmModule,
+                loss_fn="mse",
+                optimizer_fn="sgd",
+                window_size=100,
+                lr=1e-2,
+                hidden_size=32,
+                append_predict=True,
+            )
+        )
+        
+        print(self.model)
+
+    def compute_RSI(self, asset):
+        # Calculate the RSI using EMA method
+        idx = OBData.assetIdx[asset]-1
+        self.windowRSI[idx].append(OBData.currentPrice(asset))
+
+        if len(self.windowRSI[idx]) > 1:
+            delta = self.windowRSI[idx][-1] - self.windowRSI[idx][-2]
+        else:
+            delta = 0
+
+        if not hasattr(self, "avg_gain"):
+            self.avg_gain = np.zeros(self.asset_count)
+            self.avg_loss = np.zeros(self.asset_count)
+
+        gain = max(delta, 0)
+        loss = max(-delta, 0)
+
+        self.avg_gain[idx] = (1 - self.alpha) * self.avg_gain[idx] + self.alpha * gain
+        self.avg_loss[idx] = (1 - self.alpha) * self.avg_loss[idx] + self.alpha * loss
+
+        if self.avg_loss[idx] == 0:
+            rsi = 100
+        else:
+            rs = self.avg_gain[idx] / self.avg_loss[idx]
+            rsi = 100 - (100 / (1 + rs))
+
+        if len(self.windowRSI[idx]) < self.windowLengt:
+            self.historical_RSI[idx].append(None)
+            return None
+        else:
+            self.historical_RSI[idx].append(rsi)
+            return rsi
+
+    def calculate_moving_averages(self, asset):
+        # Compute short and long moving averages efficiently
+        idx = OBData.assetIdx[asset]-1
+        new_price = OBData.currentPrice(asset)
+        price_queue = self.prices[idx]
+        price_queue.append(new_price)
+
+        if len(price_queue) <= self.short_window:
+            self.short_sums[idx] += new_price
+            self.long_sums[idx] += new_price
+            self.historical_short_ma[idx].append(None)
+            self.historical_long_ma[idx].append(None)
+            return None, None
+
+        elif len(price_queue) < self.long_window:
+            self.short_sums[idx] += new_price - price_queue[-self.short_window-1]
+            self.long_sums[idx] += new_price
+            self.historical_short_ma[idx].append(None)
+            self.historical_long_ma[idx].append(None)
+            return None, None
+
+        self.short_sums[idx] += new_price - price_queue[-self.short_window-1]
+        self.long_sums[idx] += new_price - price_queue[0]
+
+        short_ma = self.short_sums[idx] / self.short_window
+        long_ma = self.long_sums[idx] / self.long_window
+
+        self.historical_short_ma[idx].append(short_ma)
+        self.historical_long_ma[idx].append(long_ma)
+
+        return short_ma, long_ma
+
+    def compute_lag_rets(self, asset, lag: int):
+        # Return lagged return
+        idx = OBData.assetIdx[asset]-1
+        return self.prices[idx][-1]/self.prices[idx][-lag] - 1
+
+    def compute_ema_cum_rets(self, alpha, cumsum_rets, rets):
+        # Update exponential moving average of returns
+        return cumsum_rets*(1-alpha) + rets*alpha
+
+    def strategy(self, orderClass):
+        # Main strategy function called each time step
+        for asset in self.asset_list:
+            idx = OBData.assetIdx[asset]-1
+            current_price = OBData.currentPrice(asset)
+
+            rsi = self.compute_RSI(asset)
+            short_ma, long_ma = self.calculate_moving_averages(asset)
+
+            if current_price - self.midBuffer[idx] == 0:
+                # Skip if no price update
+                pass
+            else:
+                self.midBuffer[idx] = current_price
+                if len(self.prices[idx]) > 2:
+                    self.cumRets[idx] = self.compute_ema_cum_rets(
+                        self.alpha, self.cumRets[idx], self.compute_lag_rets(asset, -2)
+                    )
+
+                if rsi is not None and long_ma is not None and short_ma is not None:
+                    # Construct feature vector
+                    X = {
+                        "rsi" : rsi,
+                        "long_ma": long_ma,
+                        "short_ma": short_ma,
+                        "lag_ret_1": self.compute_lag_rets(asset, -1),
+                        "lag_ret_2": self.compute_lag_rets(asset, -2),
+                        "lag_ret_5": self.compute_lag_rets(asset, -5),
+                        "lag_ret_10": self.compute_lag_rets(asset, -10),
+                        "cumulative returns" : self.cumRets[idx]
+                    }
+                    self.X_list[idx].append(X)
+
+                    # Compute target (y) if window full
+                    if len(self.X_list[idx]) == self.forecast:
+                        y = current_price / self.prices[idx][-self.forecast-1]
+                        self.y_list[idx].append(y)
+                        y_pred = self.model.predict_one(X)
+                        self.y_pred_list[idx].append(y_pred)
+
+                    # Decision logic (only after training window)
+                    if OBData.step > self.trainLen:
+                        if current_price * y_pred > current_price * 1.02:
+                            # Buy signal
+                            if self.inventory[asset]["quantity"] < MAX_INVENTORY and self.AUM_available > 0:
+                                price, quantity = current_price, 1000 
+                                orderClass.send_order(self, asset, price, quantity)
+                                self.AUM_available -= quantity
+                                self.orderID += 1
+
+                        if current_price * y_pred < current_price * 0.98:
+                            # Sell signal
+                            if self.inventory[asset]["quantity"] > -MAX_INVENTORY:
+                                price, quantity = current_price, 1000
+                                orderClass.send_order(self, asset, price, -quantity)
+                                self.AUM_available += quantity
+                                self.orderID += 1
+
+                    # Online model update
+                    if len(self.X_list[idx]) == self.forecast:
+                        self.model.learn_one(self.X_list[idx][0], self.y_list[idx][-1])
+                        self.metric.update(self.y_list[idx][-1], self.y_pred_list[idx][0])
+                        self.prediction[idx].append([self.y_pred_list[idx][0], self.y_list[idx][-1]])
+
+        self.historical_AUM.append(self.AUM_available)
+        orderClass.filled_order(self)
