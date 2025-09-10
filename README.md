@@ -6,8 +6,32 @@ The objective of this project is to design, implement, and backtest algorithmic 
 
 # Repository Structure   
 
-
-
+AMP-Algo-Trading-Final/
+├── st_main.py # Streamlit entrypoint (runs backtests + dashboard)
+├── momentum.ipynb # Momentum demo notebook
+├── value.ipynb # Value demo notebook
+├── requirements.txt
+├── backtesterClass/ # Core engine
+│ ├── analysisClass.py # Plotly dashboards (price/indicators/PnL/AUM/inventory)
+│ ├── orderBookClass.py # Loads OHLCV, time-stepping, current/future price
+│ ├── orderClass.py # Order creation, next-day fills, PnL & inventory updates
+│ ├── tradingStratClass.py # Base autoTrader (AUM, inventory, PnL book-keeping)
+│ └── streamlit_dashboard.py # Streamlit wrapper
+├── strats/ # Strategies
+│ ├── movingAverageStrat.py # MA crossover + stop-loss
+│ ├── rsiStrat.py # RSI overbought/oversold + exits
+│ ├── momentumStrat.py # MA crossover + RSI filter (combined momentum)
+│ ├── momentumOnlineLearn.py # Online linear model on engineered features (river)
+│ ├── LTSMOnlineLearn.py # Online LSTM forecaster (deep_river)
+│ └── valueStrat.py # Fundamentals-based long/short, quarterly rebalancing
+├── utils/
+│ ├── utils.py # Global performance plots
+│ └── debug.py # Logging helper
+├── data/
+│ ├── all_ohlcv_data.csv # OHLCV panel (multi-ticker)
+│ └── fundamentals_wide.csv # Fundamentals with release_date per metric/ticker
+└── Results/
+└── folder.txt # (placeholder)
 
 
 
