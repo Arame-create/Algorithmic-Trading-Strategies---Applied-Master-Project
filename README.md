@@ -75,10 +75,10 @@ Portfolio construction:
 - Target: forward price ratio; streaming predict_one / learn_one with river metrics (code uses metrics.ROCAUC() as a placeholder metric tracker).
 
 # What Results Does the Repo Produce?
-The framework outputs time-series plots and internal histories for:       
-AUM (portfolio value), Cash, Realized PnL, Unrealized PnL, Inventory (per asset)   
+The framework outputs time-series plots and internal histories for AUM (portfolio value), Cash, Realized PnL, Unrealized PnL, Inventory (per asset).      
 
-Example:       
+**Preview**  
+
 ![UI Preview](ui_preview.png)
 
 
