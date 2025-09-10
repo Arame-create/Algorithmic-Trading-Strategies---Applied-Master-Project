@@ -6,6 +6,7 @@ The objective of this project is to design, implement, and backtest algorithmic 
 
 # Repository Structure   
 
+```
 AMP-Algo-Trading-Final/
 ├── st_main.py # Streamlit entrypoint (runs backtests + dashboard)
 ├── momentum.ipynb # Momentum demo notebook
@@ -33,7 +34,7 @@ AMP-Algo-Trading-Final/
 └── Results/
 └── folder.txt # (placeholder)
 
-
+```
 
 # Strategies Implemented
 
