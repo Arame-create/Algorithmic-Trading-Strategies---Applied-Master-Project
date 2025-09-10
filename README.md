@@ -72,4 +72,22 @@ Portfolio construction:
 **LSTM – Online Learning (LTSMOnlineLearn.py)**    
 - Features: same engineered features as above; rolling price buffers.      
 - Model: deep_river.neural_net.Forecaster (LSTM with configurable hidden size, LR, append_predict).     
-- Target: forward price ratio; streaming predict_one / learn_one with river metrics (code uses metrics.ROCAUC() as a placeholder metric tracker).           
+- Target: forward price ratio; streaming predict_one / learn_one with river metrics (code uses metrics.ROCAUC() as a placeholder metric tracker).
+
+# What Results Does the Repo Produce?
+The framework outputs time-series plots and internal histories for:       
+AUM (portfolio value), Cash, Realized PnL, Unrealized PnL, Inventory (per asset)   
+
+Example:       
+![UI Preview](ui_preview.png)
+
+
+![UI Preview](ui_preview2.png)
+
+
+![UI Preview](ui_preview3.png)
+
+
+**Getting Started**       
+
+- pip install -r requirements.txt   
