@@ -1,8 +1,0 @@
-numpy
-pandas
-plotly
-river
-streamlit
-torch
-tqdm
-deep_river
