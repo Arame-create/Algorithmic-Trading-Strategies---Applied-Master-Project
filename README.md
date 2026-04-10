@@ -163,7 +163,7 @@ Across the broader project, the top-performing strategy was a MA–RSI hybrid mo
 - Indicators such as RSI and moving averages   
 
 
-**Preview**  
+# Preview  
 
 ![UI Preview](ui_preview.png)
 
