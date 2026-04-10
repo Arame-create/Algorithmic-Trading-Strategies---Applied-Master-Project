@@ -1,4 +1,4 @@
-# Systematic Trading Research Project | Momentum, Value & Neural Neetworks
+# Systematic Trading Research Project | Momentum, Value & Neural Networks
 
 This repository contains a collaborative Applied Master Project completed as part of the MSc in Financial Engineering at EDHEC Business School.
 
@@ -89,45 +89,45 @@ The framework is designed to:
 # Strategies Implemented   
 
 **1. Moving Average Crossover (movingAverageStrat.py)**  
-**Signal:** short vs long SMA crossover per asset    
-**Trading logic:** buy on golden cross, sell/short on death cross 
-**Risk controls:** max inventory per asset and stop-loss rules 
+- **Signal:** short vs long SMA crossover per asset    
+- **Trading logic:** buy on golden cross, sell/short on death cross 
+- **Risk controls:** max inventory per asset and stop-loss rules 
 
 **2. RSI Strategy (rsiStrat.py)**    
-**Signal:** RSI computed via EMA-smoothed gains and losses   
-**Entries:** buy when RSI ≤ buy threshold; sell/short when RSI ≥ sell threshold   
-**Exits:** partial or full exits as RSI mean-reverts toward 50  
-**Risk controls:** inventory cap and stop-loss   
+- **Signal:** RSI computed via EMA-smoothed gains and losses   
+- **Entries:** buy when RSI ≤ buy threshold; sell/short when RSI ≥ sell threshold   
+- **Exits:** partial or full exits as RSI mean-reverts toward 50  
+- **Risk controls:** inventory cap and stop-loss   
 
 **3. Hybrid Momentum Strategy (momentumStrat.py)**  
-**Signal:** moving-average crossover combined with an RSI filter   
-**Trading logic:** go long when short MA > long MA and RSI is not overbought; short when short MA < long MA and RSI is not oversold   
-**Objective:** reduce false entries relative to standalone MA or RSI rules   
-**Exits:** RSI reversion bands around 50, with inventory cap and stop-loss controls   
+- **Signal:** moving-average crossover combined with an RSI filter   
+- **Trading logic:** go long when short MA > long MA and RSI is not overbought; short when short MA < long MA and RSI is not oversold   
+- **Objective:** reduce false entries relative to standalone MA or RSI rules   
+- **Exits:** RSI reversion bands around 50, with inventory cap and stop-loss controls   
 
 **4. Value Strategy (valueStrat.py)**   
-**Strategy type:** quarterly dollar-neutral cross-sectional long/short strategy      
-**Data source:** fundamentals_wide.csv, using release-date-aligned fundamental data   
-**Data handling:**  forward-fill between disclosures, median imputation for remaining missing values   
-**Data quality filter:** excludes names with more than 40% missing selected metrics   
-**Signal construction:** computes cross-sectional z-scores and aggregates them into a composite value score   
-**Portfolio construction:** equal-weight top / bottom 10 portfolio construction   
-**Rebalancing**: quarterly on actual post-release dates to reduce look-ahead bias  
-**Position management:** flattens positions in names that drop out of the selected baskets   
+- **Strategy type:** quarterly dollar-neutral cross-sectional long/short strategy      
+- **Data source:** fundamentals_wide.csv, using release-date-aligned fundamental data   
+- **Data handling:**  forward-fill between disclosures, median imputation for remaining missing values   
+- **Data quality filter:** excludes names with more than 40% missing selected metrics   
+- **Signal construction:** computes cross-sectional z-scores and aggregates them into a composite value score   
+- **Portfolio construction:** equal-weight top / bottom 10 portfolio construction   
+- **Rebalancing**: quarterly on actual post-release dates to reduce look-ahead bias  
+- **Position management:** flattens positions in names that drop out of the selected baskets   
 
 **5. Momentum – Online Learning (momentumOnlineLearn.py)**    
-**Features:** RSI, short/long moving averages, lagged returns (1/2/5/10), and rolling cumulative returns   
-**Model:** river pipeline with online scaling and linear classification / regression logic    
-**Target:** forward price ratio over a forecasting window     
-**Loop:** streaming predict → trade decision → incremental learn_one update    
-**Objective:** test whether adaptive online learning adds value relative to static rule-based momentum rules   
+- **Features:** RSI, short/long moving averages, lagged returns (1/2/5/10), and rolling cumulative returns   
+- **Model:** river pipeline with online scaling and linear classification / regression logic    
+- **Target:** forward price ratio over a forecasting window     
+- **Loop:** streaming predict → trade decision → incremental learn_one update    
+- **Objective:** test whether adaptive online learning adds value relative to static rule-based momentum rules   
 
 **6. LSTM – Online Learning (LTSMOnlineLearn.py)**  
-**Features:** technical features and rolling price buffers  
-**Model:** deep_river / PyTorch LSTM forecasting architecture  
-**Target:** forward price ratio in an online prediction workflow  
-**Workflow:** streaming predict_one / learn_one  
-**Role in the project:** experimental extension of the framework toward adaptive deep-learning-based trading signals   
+- **Features:** technical features and rolling price buffers  
+- **Model:** deep_river / PyTorch LSTM forecasting architecture  
+- **Target:** forward price ratio in an online prediction workflow  
+- **Workflow:** streaming predict_one / learn_one  
+- **Role in the project:** experimental extension of the framework toward adaptive deep-learning-based trading signals   
 
 # Selected Results   
 # Value strategy   
@@ -174,7 +174,7 @@ Across the broader project, the top-performing strategy was a MA–RSI hybrid mo
 ![UI Preview](ui_preview3.png)
 
 
-**Getting Started**       
+# Getting Started     
 install dependencies: 
 
 - pip install -r requirements.txt   
